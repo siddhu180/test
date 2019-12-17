@@ -1,0 +1,7 @@
+{
+           customerName: "John Doe",
+           customerPhone: "91-4445557777",
+           customerEmail: "john.doe@example.com",
+           customerDOB: "1990-01-01",
+           customerLocation: "HYD"
+}

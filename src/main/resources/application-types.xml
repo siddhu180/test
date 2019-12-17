@@ -1,0 +1,39 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="OutputExcelMetaData" format="csv">
+      <types:shape format="weave"><![CDATA[%dw 2.0
+
+type OutputExcelMetaData = Array<{|  CustomerID: Number,   "Customer Name": String,   "Customer Phone": String,   "Customer Email": String,   "Customer DOB": String,   "Customer Location": String,   Status: String,   "Creation Time": DateTime,   "Updated Time": DateTime|}>
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="true"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
+    <types:type name="InputPayloadData" format="json">
+      <types:shape format="weave" example="examples/input-1."><![CDATA[%dw 2.0
+
+type InputPayloadData = {|
+  customerName: String, 
+  customerPhone: String, 
+  customerEmail: String, 
+  customerDOB: String, 
+  customerLocation: String
+|} {"example": "{\\\"customerName\\\":\\\"John Doe\\\",\\\"customerPhone\\\":\\\"91-4445557777\\\",\\\"customerEmail\\\":\\\"john.doe@example.com\\\",\\\"customerDOB\\\":\\\"1990-01-01\\\",\\\"customerLocation\\\":\\\"HYD\\\"}"}
+
+]]></types:shape>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#4324000f-394a-4ed8-a034-43bfca330942">
+    <types:processor-declaration>
+      <types:output-event>
+        <types:message>
+          <types:payload type="OutputExcelMetaData"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>

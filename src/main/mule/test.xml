@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="f4795128-2ce7-4800-b046-756d495dbce5" >
+		<jms:active-mq-connection username="admin" password="admin" >
+			<jms:caching-strategy >
+				<jms:no-caching />
+			</jms:caching-strategy>
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+	<validation:config name="Validation_Config" doc:name="Validation Config" doc:id="263e3084-baca-41b4-8722-b828a7a1e02a" />
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="beb269ca-8e51-41f4-9394-14faf4e40d94" >
+		<http:listener-connection host="${http.host}" port="${http.port}" />
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="126e61f3-e9be-4e42-b21c-4cab27488491" file="config.properties" />
+	<flow name="testFlow" doc:id="60a73dda-4042-48f6-9c79-36b94fd2a042" >
+		<http:listener doc:name="Listener" doc:id="91dec623-91af-45e8-a1e3-b616fbac18df" path="${http.path}" config-ref="HTTP_Listener_config">
+			<http:response statusCode="#[vars.statusCode]" reasonPhrase="#[vars.reasonPhrase]" />
+			<http:error-response>
+				<http:body ><![CDATA[#[payload]]]></http:body>
+			</http:error-response>
+		</http:listener>
+		<validation:all doc:name="All" doc:id="a56308be-4246-4c48-982b-a74963ed34ca" >
+			<validation:is-not-blank-string doc:name="Is not blank string" doc:id="7717a3ca-07f6-436a-8f50-4ebcd04512b6" value="#[payload.customerName]" message="Please provide a Valid Customer Name"/>
+			<validation:is-email doc:name="Is email" doc:id="70f66df4-d7f2-45c3-9633-45004327ad77" email="#[payload.customerEmail]" message="Please Provide a Valid Email Address"/>
+			<validation:matches-regex doc:name="Matches regex" doc:id="e334c9eb-02cb-4bd5-a5d2-1034d0afabf0" value="#[payload.customerPhone]" regex="^[1-9]\d*$" message="Please provide a valid 10 digit without characters"/>
+		</validation:all>
+		<logger level="INFO" doc:name="Logger" doc:id="4f606dfd-b2a5-439d-8652-887852d658ed" message="#[payload]"/>
+		<jms:publish doc:name="Publish" doc:id="86d27653-1446-4b96-aa33-9c98966ba47a" config-ref="JMS_Config" destination="Q.TEK.CUSTOMER"/>
+		<error-handler>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="2a10d060-f497-4904-a570-1732ad941473" type="VALIDATION:BLANK_STRING, VALIDATION:INVALID_EMAIL, VALIDATION:INVALID_NUMBER, VALIDATION:MISMATCH">
+				<ee:transform doc:name="Transform Message" doc:id="bcb55929-70f2-416e-b6fe-3123522fc4d4" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"status": 400,
+	"message": error.description
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="statusCode" ><![CDATA[400]]></ee:set-variable>
+						<ee:set-variable variableName="reasonPhrase" ><![CDATA["Bad request"]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

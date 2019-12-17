@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<jms:config name="JMS_Config1" doc:name="JMS Config" doc:id="2ef03758-d7ef-4c13-93cb-508a0f252bef" >
+		<jms:active-mq-connection username="admin" password="admin" >
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" />
+		</jms:active-mq-connection>
+	</jms:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="5072bcab-16c0-4567-a466-fb189600b0f9" >
+		<db:my-sql-connection host="localhost" port="3306" user="siddhu" password="siddhu" database="customer" />
+	</db:config>
+	<flow name="subscribeFlow" doc:id="652cafc1-8f7a-4b8a-b078-966291b6639f" >
+		<scheduler doc:name="Scheduler" doc:id="e1c319be-22ea-4e76-ae65-144b4169cd1b" >
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</scheduler>
+		<jms:consume doc:name="Consume" doc:id="9cc5b3e1-40c3-497f-8b5b-2633d5dbd627" config-ref="JMS_Config1" destination="Q.TEK.CUSTOMER" contentType="application/json" maximumWaitUnit="SECONDS">
+			<jms:consumer-type >
+				<jms:queue-consumer />
+			</jms:consumer-type>
+		</jms:consume>
+		<logger level="INFO" doc:name="Logger" doc:id="18ccd309-b87c-4acf-8595-ff42ad650a0d" message="#[payload]"/>
+		<db:insert doc:name="Insert" doc:id="066f3e6d-1ca7-46da-9de9-7c1dbb083603" config-ref="Database_Config">
+			<db:sql >insert into customer_master(customer_name,customer_phone,customer_email,customer_dob,customer_location)
+values(:customer_name,:customer_phone,:customer_email,:customer_dob,:customer_location);
+</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+"customer_name":  payload.customerName,
+"customer_phone": payload.customerPhone,
+"customer_email": payload.customerEmail,
+"customer_dob": payload.customerDOB,
+"customer_location": payload.customerLocation
+}]]]></db:input-parameters>
+		</db:insert>
+	</flow>
+</mule>

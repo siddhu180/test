@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<db:config name="Database_Config1" doc:name="Database Config" doc:id="cf10b4ec-a6d8-4a15-814f-bcdaa6b92ef5" >
+		<db:my-sql-connection host="localhost" port="3306" user="siddhu" password="siddhu" database="customer" />
+	</db:config>
+	<ftp:config name="FTP_Config" doc:name="FTP Config" doc:id="95dbae84-d2ad-4bdf-809e-3526650f4d41" >
+		<ftp:connection workingDir="testing" host="localhost" username="siddhu" password="siddhu" />
+	</ftp:config>
+	<flow name="schedulerFlow" doc:id="1728ec1e-5050-43c4-9fdb-f6ae4ddefbb5" >
+		<scheduler doc:name="Scheduler" doc:id="2400c81c-6895-4494-b095-02b1583cf529" >
+			<scheduling-strategy >
+				<cron expression="1 * * * * ?" timeZone="America/Toronto" />
+			</scheduling-strategy>
+		</scheduler>
+		<db:select doc:name="Select Customers" doc:id="786f6bbd-5f96-49d1-bd3b-a3a0d5afa424" config-ref="Database_Config">
+			<db:sql >select * from customer_master where status = 'N' or status = 'U'</db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="4324000f-394a-4ed8-a034-43bfca330942" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv headerLineNumber = 1 , header = false
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	CustomerID: payload01.customer_id,
+	"Customer Name": payload01.customer_name default "",
+	"Customer Phone": payload01.customer_phone default "",
+	"Customer Email": payload01.customer_email default "",
+	"Customer DOB": payload01.customer_dob default "",
+	"Customer Location": payload01.customer_location default "",
+	Status: payload01.status default "",
+	"Creation Time": payload01.created_date as DateTime,
+	"Updated Time": payload01.updated_date as DateTime
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ftp:write doc:name="Write" doc:id="0b02caad-8b53-44da-adc8-6099fd8ca107" path="customerinfo.csv" mode="APPEND" config-ref="FTP_Config"/>
+		<db:update doc:name="Update" doc:id="fd9d5b2e-9e7f-4c93-ae4b-0ed20dbee26c" config-ref="Database_Config1">
+			<db:sql>UPDATE customer_master set status = 'C' where status = 'N' OR status = 'U'</db:sql>
+		</db:update>
+	</flow>
+</mule>
